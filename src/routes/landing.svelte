@@ -30,15 +30,24 @@ const doSubmit = async () => {
        
        
        let lform = Object.fromEntries(Object.entries(form).map(([key, el]) => [key, el.value]))
-       await firebase.auth().signInWithEmailAndPassword(lform.email, lform.password)
-       .then((user) => {
-           navigate("/t")
-       })
-       .catch((error) => {
-            navigate("/login")
-           
+       firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).then(async() => {
+            await firebase.auth().signInWithEmailAndPassword(lform.email, lform.password)
+            .then((user) => {
+                navigate("/t")
+            })
+            .catch((error) => {
 
-       });
+                errorMessage = error.message;
+
+            });
+
+            })
+   
+        .catch((error) => {
+            // Handle Errors here.
+            var errorCode = error.code;
+            var errorMessage = error.message;
+        });
    };
 </script>
 

@@ -23,13 +23,16 @@ onDestroy(() => {
     unsubscribeUser()
 })
 const doSubmit = async () => {
-       
+    
+           
+      
         errorMessage = undefined
         let lform = Object.fromEntries(Object.entries(form).map(([key, el]) => [key, el.value]))
         if (lform.repassword != lform.password) {
             errorMessage = "Passwords do not match"
             return
         }
+        
         await auth.createUserWithEmailAndPassword(lform.email, lform.password)
         .then(async (result) => {
             await result.user.updateProfile({
@@ -46,6 +49,7 @@ const doSubmit = async () => {
         .catch((error) => {
             errorMessage = error.message 
         })
+      
     };
 
 </script>

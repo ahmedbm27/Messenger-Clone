@@ -21,18 +21,31 @@ onMount(() => {
 onDestroy(() => {
     unsubscribeUser()
 })
-const doSubmit = async () => {
+const doSubmit =  () => {
+
        
         errorMessage = undefined
+        
+    
+
         let lform = Object.fromEntries(Object.entries(form).map(([key, el]) => [key, el.value]))
-        await firebase.auth().signInWithEmailAndPassword(lform.email, lform.password)
-        .then((user) => {
-            navigate("/t")
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).then(async() => {
+            await firebase.auth().signInWithEmailAndPassword(lform.email, lform.password)
+            .then((user) => {
+                navigate("/t")
+            })
+            .catch((error) => {
+
+                errorMessage = error.message;
+
+            });
+
+           
         })
         .catch((error) => {
-
-            errorMessage = error.message;
-
+            // Handle Errors here.
+            var errorCode = error.code;
+            var errorMessage = error.message;
         });
     };
 
