@@ -346,7 +346,7 @@ const doSubmit = async () => {
         flex-wrap: wrap;
     }
     #mobileMenu{
-        position: fixed;
+        position: none;
         display: flex;
         background-color: white;
         z-index: 2;
