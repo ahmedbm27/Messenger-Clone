@@ -21,7 +21,7 @@ onMount(() => {
 onDestroy(() => {
     unsubscribeUser()
 })
-const doSubmit =  () => {
+const doSubmit = async  () => {
 
        
         errorMessage = undefined
@@ -29,7 +29,6 @@ const doSubmit =  () => {
     
 
         let lform = Object.fromEntries(Object.entries(form).map(([key, el]) => [key, el.value]))
-        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).then(async() => {
             await firebase.auth().signInWithEmailAndPassword(lform.email, lform.password)
             .then((user) => {
                 navigate("/t")
@@ -41,12 +40,7 @@ const doSubmit =  () => {
             });
 
            
-        })
-        .catch((error) => {
-            // Handle Errors here.
-            var errorCode = error.code;
-            var errorMessage = error.message;
-        });
+        
     };
 
 
