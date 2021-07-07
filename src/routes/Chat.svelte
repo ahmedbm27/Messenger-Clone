@@ -3,6 +3,8 @@ import {user,db} from "../firebase.js"
 import { navigate } from "svelte-routing";
 import {onMount,onDestroy} from "svelte"
 
+export let UrlId="";
+console.log(UrlId);
 
 
 let userClickedUid;
@@ -17,9 +19,12 @@ onMount( async () => {
         } else {
             allowed = true
             initFirechat($user);
+            console.log("me "+$user.uid);
+            console.log("me "+$user.displayName);
         }
     })
    
+    
 })
 onDestroy(() => {
     unsubscribeUser()
@@ -48,14 +53,16 @@ let initFirechat =  async (user) =>{
     // Set the Firechat user
     chat.setUser(user.uid, user.displayName); 
     await beOnline();
-    getAllUsers()
-
-     //get all rooms available
-     let ref=db.ref('chat/AllRooms');
+    //get all rooms available
+    let ref=db.ref('chat/AllRooms');
     await ref.on('value', (snapshot) => {
         const data = snapshot.val();
         AllRooms = data
         });
+    getAllUsers()
+
+
+     
 
    
     
@@ -74,6 +81,11 @@ let enterRoom = (id) =>{
 let sendMessage = (id,message) =>{
     chat.sendMessage(id, message,'default', ()=>{
         console.log("mesage sent");
+        let ref=db.ref('chat/online-state/'+$user.uid+'/time');
+        let time = Math.round(new Date().getTime() / 1000)
+        ref.set({
+            "Timestamp":time
+        })
     })
 }
 
@@ -113,16 +125,19 @@ let enterRoomMsgs = (id) =>{
                
                 RoomSmsg.map((key,index) =>{
                     if (key.id === id){
+                      
                         RoomSmsg[index]= {"id":id,RoomMsg}
                     }
                 })
             }
            
-    }); 
+    });
+    
+
 }
 let enterMessages = (id) =>{
 if(RoomSmsg.length !=0){
-    
+
     let exist = checkRoomSmsg(id)
     if (exist==false){
         enterRoomMsgs(id)
@@ -137,26 +152,79 @@ if(RoomSmsg.length !=0){
 
 //get all online users
 let onlineUsers={};
-const getAllUsers =() =>{
-db.ref('chat/online-state').on('value', (snapshot) => {
+const getAllUsers =  async () =>{
+await db.ref('chat/online-state').on('value', (snapshot) => {
 const data = snapshot.val();
 onlineUsers=Object.values(data);
+
+if(UrlId==""){
+  
+    if(onlineUsers.length !==1){
+        if (onlineUsers[0].status.uid == $user.uid) {
+            window.history.replaceState({}, '','/t/'+onlineUsers[1].status.uid); 
+            UrlId=onlineUsers[1].status.uid
+        }else{
+            window.history.replaceState({}, '','/t/'+onlineUsers[0].status.uid);  
+            UrlId=onlineUsers[0].status.uid
+        }
+        getRoomMsgs(UrlId)
+    }     
+}else{
+    console.log("2");
+    let exist = false
+    onlineUsers.map(value=>{
+        if(value.status.uid == UrlId){
+            exist = true;
+        }
+    })
+    if(!exist){
+        
+        if(onlineUsers.length !==1){
+            if (onlineUsers[0].status.uid == $user.uid) {
+                window.history.replaceState({}, '','/t/'+onlineUsers[1].status.uid);  
+                UrlId=onlineUsers[1].status.uid
+            }else{
+                window.history.replaceState({}, '','/t/'+onlineUsers[0].status.uid);   
+                UrlId=onlineUsers[0].status.uid
+            }
+            getRoomMsgs(UrlId)
+        }
+
+    }else{
+        if(onlineUsers.length !==1){
+            if (UrlId == $user.uid) {
+                if (onlineUsers[0].status.uid == $user.uid) {
+                    window.history.replaceState({}, '','/t/'+onlineUsers[1].status.uid);
+                    UrlId=onlineUsers[1].status.uid
+                }else{
+                    window.history.replaceState({}, '','/t/'+onlineUsers[0].status.uid);  
+                    UrlId=onlineUsers[0].status.uid
+                }
+            }
+            getRoomMsgs(UrlId)
+        }
+    }
+}
+
+
 });
+
+
 }
 
 const beOnline = () =>{
-    let ref=db.ref('chat/online-state/'+$user.uid);
-    ref.set(
-        {
-            "uid" :$user.uid,
-            "name":$user.displayName,
-            "status":true
-        })
+    let ref=db.ref('chat/online-state/'+$user.uid+'/status');
+    ref.set({
+        "uid" :$user.uid,
+        "name":$user.displayName,
+        "status":true,
+    })
+        
     ref.onDisconnect().set({
-            "uid" :$user.uid,
-            "name":$user.displayName,
-            "status":false
-        });
+        "uid" :$user.uid,
+        "name":$user.displayName,
+        "status":true,
+    })
 }
 const getRoomMsgs = async (oID) =>{
     
@@ -207,10 +275,9 @@ const getRoomMsgs = async (oID) =>{
         roomId =singleRoom
         enterMessages(roomId) 
         
-        
     }
      
-   
+    
 
  }
 
@@ -302,6 +369,7 @@ const formatTimestampToDate = (t) => {
         display: flex;
         flex-direction: column;
         margin-bottom: 75px;
+        overflow-y: scroll;
     }
     .singleMsg .msgBlock{
         display: flex;
@@ -441,6 +509,7 @@ padding-left: 26px;
 .messagesNav .rightBtns{
 padding: 0 6px;
 cursor: pointer;
+margin-right: 12px;
 }
 .messagesSendingArea{
     display: flex;
@@ -488,6 +557,7 @@ cursor: pointer;
     margin: 0 3px;
 }
 
+
     @media only screen and (max-width:800px){
     .container{
         display: flex;
@@ -531,7 +601,7 @@ cursor: pointer;
         <div class="roomsNav">
             <div class="topPrt">
                 <div class="imgText">
-                    <div class="img"><img src="./imgs/user.jpg" alt=""></div>
+                    <div class="img"><img src="../imgs/user.jpg" alt=""></div>
                     <div class="text">Chats</div>
                 </div>
                
@@ -548,30 +618,33 @@ cursor: pointer;
                 </div>
             </div>
             <div  class="search">
-                <img src="./imgs/search.svg" alt="">
+                <img src="../imgs/search.svg" alt="">
                 <input type="text" placeholder="Search Messenger">
             </div>
         </div>
         {#if Object.keys(onlineUsers).length!=0}
         {#each onlineUsers as onlineUser}
-            {#if onlineUser.uid !== $user.uid}
+            {#if onlineUser.status.uid !== $user.uid}
             
             <div 
             on:click="{()=>{
-                let x = onlineUser.uid ;
+                let x = onlineUser.status.uid ;
                 getRoomMsgs(x)
                 userClickedUid = x;
+                
+                window.history.replaceState({}, '','/t/'+x);
+                UrlId=x
             }}"
             class="singleUser">
             <div class="img">
-                <img src="./imgs/user.jpg" alt="user">
+                <img src="../imgs/user.jpg" alt="user">
                 
-                <div class="notif {onlineUser.status ? "online" :""}" ></div>
+                <div class="notif {onlineUser.status.status ? "online" :""}" ></div>
                 
             </div>
             
             <div class="nameMsg">
-                <div class="name">{onlineUser.name}</div>
+                <div class="name">{onlineUser.status.name}</div>
                 <div class="lastMsg">i dont know</div>
             </div>
             </div> 
@@ -585,13 +658,13 @@ cursor: pointer;
         <div class="messagesNav">
             {#if Object.keys(onlineUsers).length!=0}
             {#each onlineUsers as onlineUser}
-            {#if onlineUser.uid == userClickedUid }
+            {#if onlineUser.status.uid == userClickedUid }
             <div class="userInfo">
                 <div class="img">
-                    <img src="./imgs/user.jpg" alt="user">
-                    <div class="notif  {onlineUser.status ? "online" :""}" ></div>
+                    <img src="../imgs/user.jpg" alt="user">
+                    <div class="notif  {onlineUser.status.status ? "online" :""}" ></div>
                 </div>
-                <div class="name">{onlineUser.name}</div>
+                <div class="name">{onlineUser.status.name}</div>
             </div>
             
             <div class="rightBtns">
@@ -603,8 +676,8 @@ cursor: pointer;
             {/each}
             {/if}
         </div>
-
-        <div class="messages">
+    
+        <div class="messages" id="messages">
             {#each RoomSmsg as msgs}
             {#if msgs.id === roomId}
             {#each msgs.RoomMsg as msg}
@@ -613,7 +686,7 @@ cursor: pointer;
                 <div class="msgBlock">
                     {#if msg.userId !== $user.uid }
                     <div class="img">
-                        <img src="./imgs/user.jpg" alt="user">
+                        <img src="../imgs/user.jpg" alt="user">
                     </div>
                     {/if}
                     {#if msg.userId == $user.uid }
@@ -633,6 +706,7 @@ cursor: pointer;
             {/each}
             
         </div>
+     
 
         <div class="messagesSendingArea">
             <div class="options">
