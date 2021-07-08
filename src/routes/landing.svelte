@@ -35,7 +35,7 @@ const doSubmit = async () => {
                 navigate("/t")
             })
             .catch((error) => {
-
+                navigate("/login")
                 errorMessage = error.message;
 
             });
