@@ -2,7 +2,8 @@
 import {user,db} from "../firebase.js"
 import { navigate } from "svelte-routing";
 import {onMount,onDestroy} from "svelte"
-import { fade } from 'svelte/transition';
+import LastMsg from "../components/LastMsg.svelte"
+import {LastMsgsTracker} from "../store.js"
 export let UrlId="";
 
 
@@ -28,6 +29,7 @@ onDestroy(() => {
     unsubscribeUser()
     
 })
+
 let mobile = false;
 let writing= false
 let load= true;
@@ -45,6 +47,30 @@ if(document.getElementById("txtArea").value==""){
     writing=true
 }
 }
+
+let bold
+$:if(RoomSmsg){
+    setTimeout(() => {
+        document.querySelectorAll(".lastMsg").forEach((el)=>{
+    if (el.parentNode.id=="nameMsg"){
+        console.log('remove');
+        el.parentNode.classList.remove("bold")
+        
+    }
+    })  
+
+    document.querySelectorAll(".bold").forEach((el)=>{
+    if (el.parentNode.id=="nameMsg"){
+        console.log('add');
+        el.parentNode.classList.add("bold")
+        
+    }
+    })           
+    }, 200);
+    
+   
+}
+
 
 
 var observe;
@@ -118,6 +144,7 @@ let initFirechat =  async (user) =>{
   
     getAllRoomsMsgs()
     getAllUsers()
+   
     
   /*
     let target = document.querySelector('#rooms');
@@ -150,8 +177,8 @@ let enterRoom = (id) =>{
     
 }
 
-let sendMessage = (id,message) =>{
-    chat.sendMessage(id, message,'default', ()=>{
+let sendMessage = (id,message,type) =>{
+    chat.sendMessage(id, message,type, ()=>{
         
         let ref=db.ref('chat/online-state/'+$user.uid+'/time');
         let time = Math.round(new Date().getTime() / 1000)
@@ -202,11 +229,29 @@ let enterRoomMsgs = (id) =>{
             let exist = checkRoomSmsg(id)
             if(exist==false){
                 RoomSmsg = [...RoomSmsg,{"id":id,RoomMsg}]
+                $: if(RoomSmsg){
+                    setTimeout(() => {
+                        let target = document.querySelector('#messages');   
+                        target.scrollTop = target.scrollHeight;
+                      
+                    }, 100);
+                        
+                    }
+              
             }else if (exist==true){
                
                 RoomSmsg.map((key,index) =>{
                     if (key.id === id){
                         RoomSmsg[index]= {"id":id,RoomMsg}
+                        $: if(RoomSmsg){
+                            setTimeout(() => {
+                                let target = document.querySelector('#messages');   
+                                target.scrollTop = target.scrollHeight;
+                                
+                            }, 100);
+                        
+                    }
+                        
                     }
                     
                 })
@@ -494,20 +539,11 @@ const formatTimestampToDate = (t) => {
         justify-content: center;
         color: #050505;
     }
-    .nameMsg .lastMsg{
-        font-size: 13px;
-        color:#65676b;
-        width: 200px;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        overflow-y: hidden;
-        overflow-x: hidden;
-}
-    
-    .lastMsg.bold{
-        font-weight: 700 !important;
-        color:black;
+    .singleUser .nameMsg.bold{
+        font-weight: bold !important;
+        color:black
     }
+    
     .messages{
         margin-top: 65px;
         width: 100%;
@@ -793,6 +829,8 @@ margin-right: 12px;
         height: 100%;
         opacity: 0 !important;
         transition: opacity 0.3s; 
+        display: none;
+        overflow-x: hidden;
     }
     .messagesContainer.mobile{
         display: flex !important;
@@ -807,6 +845,7 @@ margin-right: 12px;
     .rooms.mobile{
         opacity: 0;
         width: 0px !important;
+        display: none;
         
     }
    
@@ -883,9 +922,12 @@ margin-right: 12px;
                 if(document.body.offsetWidth <=800){
                     mobile = !mobile
                 }
-                
                 window.history.replaceState({}, '','/t/'+x);
                 UrlId=x
+                setTimeout(() => {
+                        let target = document.querySelector('#messages');   
+                        target.scrollTop = target.scrollHeight;
+                    }, 100);
             }}"
             class="singleUser">
             <div class="img">
@@ -895,20 +937,16 @@ margin-right: 12px;
                 
             </div>
             
-            <div class="nameMsg">
+            <div class="nameMsg"  class:bold id="nameMsg">
                 <div class="name">{onlineUser.status.name}</div>
                 {#each RoomSmsg as msgs}
                 {#await getRoomMsgs(onlineUser.status.uid)}
                 {:then items}
                 {#if items}
                 {#if msgs.id === items}
-                <div class="lastMsg" id="lastMsg">
-                   
-                {msgs.RoomMsg.sort(function(x, y){
-                        return x.timestamp - y.timestamp;
-                })[msgs.RoomMsg.length - 1].message}
-                
-                </div>
+               
+                    <LastMsg RoomSmsg='{RoomSmsg}' items ='{items}'/>
+
                 {/if}
                 {/if}
                 {/await}
@@ -973,6 +1011,7 @@ margin-right: 12px;
                     <div class="el"></div>
                     {/if}
                     
+                    
                     <div class="msg">
                         {msg.message}
                     </div>
@@ -1011,7 +1050,7 @@ margin-right: 12px;
                         e.preventDefault();
                     }
                     if(key == 13){
-                        sendMessage(roomId,message)
+                        sendMessage(roomId,message,"new")
                         document.getElementById("txtArea").value=""
                         let target = document.querySelector('#messages');   
                         target.scrollTop = target.scrollHeight; 
@@ -1029,7 +1068,7 @@ margin-right: 12px;
                 {#if writing}
                 <svg 
                 on:click="{
-                ()=>{sendMessage(roomId,message);
+                ()=>{sendMessage(roomId,message,"new");
                     document.getElementById("txtArea").value=""
                     let target = document.querySelector('#messages');   
                     target.scrollTop = target.scrollHeight; 
