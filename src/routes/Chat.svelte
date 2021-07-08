@@ -63,13 +63,13 @@ function init () {
     function resize () {
         text.style.height = 'auto';
         text.style.height = text.scrollHeight+'px';
-        console.log(text.style.height);
+       
         if(text.style.height !== "33px"){
             bigger=true
         }else{
             bigger=false
         }
-        console.log(bigger);
+       
     }
     /* 0-timeout to get the already changed text */
     function delayedResize () {
@@ -105,7 +105,7 @@ let message;
 let roomId="";
 
 let initFirechat =  async (user) =>{
-    console.log("init");
+   
     // Get a Firebase Database ref
     let FirechatRef = db.ref("chat");
 
@@ -147,12 +147,12 @@ let createNewRoom = (name,type) =>{
 }
 let enterRoom = (id) =>{
     chat.enterRoom(id)
-    console.log('Room Entered with id ' +id);
+    
 }
 
 let sendMessage = (id,message) =>{
     chat.sendMessage(id, message,'default', ()=>{
-        console.log("mesage sent");
+        
         let ref=db.ref('chat/online-state/'+$user.uid+'/time');
         let time = Math.round(new Date().getTime() / 1000)
         ref.set({
@@ -248,19 +248,13 @@ const getAllUsers =  async () =>{
 await db.ref('chat/online-state').on('value', (snapshot) => {
 const data = snapshot.val();
 onlineUsers=Object.values(data);
-console.log(onlineUsers);
 let sorted = onlineUsers.sort(function(x, y){
     try{
     return y.time.Timestamp - x.time.Timestamp;
 }catch{
-
 }
 })
-console.log(sorted);
-if(UrlId =="noUser"){
-    window.history.replaceState({}, '','/t/noUser'); 
-    
-}else{
+
 
 
 if(UrlId==""){
@@ -278,44 +272,51 @@ if(UrlId==""){
         userClickedUid=UrlId
     }     
 }else{
-    let exist = false
-    onlineUsers.map(value=>{
-        if(value.status.uid == UrlId){
-            exist = true;
-        }
-    })
-    if(!exist){
-        
-        if(onlineUsers.length !==1){
-            if (onlineUsers[0].status.uid == $user.uid) {
-                window.history.replaceState({}, '','/t/'+onlineUsers[1].status.uid);  
-                UrlId=onlineUsers[1].status.uid
-            }else{
-                window.history.replaceState({}, '','/t/'+onlineUsers[0].status.uid);   
-                UrlId=onlineUsers[0].status.uid
-            }
-            kgetRoomMsgs(UrlId)
-            userClickedUid=UrlId
-        }
-
+    if(UrlId =="noUser"){
+    window.history.replaceState({}, '','/t/noUser'); 
+    
     }else{
-        if(onlineUsers.length !==1){
-            if (UrlId == $user.uid) {
+
+   
+        let exist = false
+        onlineUsers.map(value=>{
+            if(value.status.uid == UrlId){
+                exist = true;
+            }
+        })
+        if(!exist){
+            
+            if(onlineUsers.length !==1){
                 if (onlineUsers[0].status.uid == $user.uid) {
-                    window.history.replaceState({}, '','/t/'+onlineUsers[1].status.uid);
+                    window.history.replaceState({}, '','/t/'+onlineUsers[1].status.uid);  
                     UrlId=onlineUsers[1].status.uid
                 }else{
-                    window.history.replaceState({}, '','/t/'+onlineUsers[0].status.uid);  
+                    window.history.replaceState({}, '','/t/'+onlineUsers[0].status.uid);   
                     UrlId=onlineUsers[0].status.uid
                 }
+                kgetRoomMsgs(UrlId)
+                userClickedUid=UrlId
             }
-            kgetRoomMsgs(UrlId)
-            userClickedUid=UrlId
+
+        }else{
+            if(onlineUsers.length !==1){
+                if (UrlId == $user.uid) {
+                    if (onlineUsers[0].status.uid == $user.uid) {
+                        window.history.replaceState({}, '','/t/'+onlineUsers[1].status.uid);
+                        UrlId=onlineUsers[1].status.uid
+                    }else{
+                        window.history.replaceState({}, '','/t/'+onlineUsers[0].status.uid);  
+                        UrlId=onlineUsers[0].status.uid
+                    }
+                }
+                kgetRoomMsgs(UrlId)
+                userClickedUid=UrlId
+            }
         }
     }
 }
 
-}
+
 });
 
 
@@ -389,7 +390,6 @@ const getRoomMsgs = async (oID) =>{
 const kgetRoomMsgs = async (oID) =>{
     
     let singleRoom = await getRoomMsgs(oID)
-    console.log(singleRoom);
     if (singleRoom ==false) {
         
         chat.createRoom("room", "private", (v) =>{
@@ -398,8 +398,9 @@ const kgetRoomMsgs = async (oID) =>{
                 db.ref('chat/AllRooms/' +v).set({
                     "id":[$user.uid,oID]
                 })
-                chat.sendMessage(v, "",'default', ()=>{
-                    enterMessages(roomId)
+                
+                chat.sendMessage(v, " ",'default', ()=>{
+                    enterMessages(roomId) 
                 })
                
             } catch (error) {
@@ -408,7 +409,6 @@ const kgetRoomMsgs = async (oID) =>{
            
         })
     }else{
-        console.log("else");
         roomId =singleRoom
         enterMessages(roomId) 
         
@@ -874,13 +874,7 @@ margin-right: 12px;
         
         {#each onlineUsers as onlineUser}
             {#if onlineUser.status.uid !== $user.uid}
-            
-            {#each RoomSmsg as msgs}
-            {#await getRoomMsgs(onlineUser.status.uid)}
-            {:then items}
-            {#if items}
-            {#if msgs.id === items}
-            
+
             <div 
             on:click="{()=>{
                 let x = onlineUser.status.uid ;
@@ -903,17 +897,27 @@ margin-right: 12px;
             
             <div class="nameMsg">
                 <div class="name">{onlineUser.status.name}</div>
+                {#each RoomSmsg as msgs}
+                {#await getRoomMsgs(onlineUser.status.uid)}
+                {:then items}
+                {#if items}
+                {#if msgs.id === items}
                 <div class="lastMsg" id="lastMsg">
-                    {msgs.RoomMsg.sort(function(x, y){
+                   
+                {msgs.RoomMsg.sort(function(x, y){
                         return x.timestamp - y.timestamp;
                 })[msgs.RoomMsg.length - 1].message}
+                
                 </div>
+                {/if}
+                {/if}
+                {/await}
+                {/each}
+
             </div>
+             
             </div>
-            {/if}
-            {/if}
-            {/await}
-            {/each} 
+           
             {/if}
             
         {/each}
@@ -958,7 +962,7 @@ margin-right: 12px;
             {#if msgs.id === roomId}
             {#each msgs.RoomMsg as msg}
             <div class="singleMsg {msg.userId === $user.uid ? "myMsg" :""}">
-                
+                {#if msg.message !==" "}
                 <div class="msgBlock">
                     {#if msg.userId !== $user.uid }
                     <div class="img">
@@ -968,12 +972,16 @@ margin-right: 12px;
                     {#if msg.userId == $user.uid }
                     <div class="el"></div>
                     {/if}
+                    
                     <div class="msg">
                         {msg.message}
                     </div>
                    
+                   
                     
                 </div>
+                
+                {/if}
                 
                 <!--: {msg.name} at {formatTimestampToDate(msg.timestamp)}-->
             </div>
@@ -996,7 +1004,7 @@ margin-right: 12px;
                 <textarea 
                 on:keydown ="{(e)=>{
                     let key = e.keyCode;
-                    console.log(key);
+                   
                     if (key == 13 && !e.shiftKey)
                     {
                         // prevent default behavior
