@@ -40,11 +40,11 @@ const doSubmit = async () => {
             })
 
             await auth.signOut().then(() => {
-            // Sign-out successful.
+            navigate("/")
             }).catch((error) => {
             // An error happened.
             });
-            navigate("/t")
+
         })
         .catch((error) => {
             errorMessage = error.message 

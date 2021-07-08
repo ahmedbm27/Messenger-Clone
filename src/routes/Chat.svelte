@@ -2,7 +2,7 @@
 import {user,db} from "../firebase.js"
 import { navigate } from "svelte-routing";
 import {onMount,onDestroy} from "svelte"
-
+import { fade } from 'svelte/transition';
 export let UrlId="";
 
 
@@ -28,9 +28,11 @@ onDestroy(() => {
     unsubscribeUser()
     
 })
+let mobile = false;
 let writing= false
 let load= true;
 let bigger=false
+let noUser=false;
 const textAreaChanging = () =>{
 if (load){
     init()
@@ -85,22 +87,8 @@ function init () {
     resize();
    
 }
-    /* console.log("after");
-    let target = document.querySelector('#lastMsg');
-    console.log('ee'+target);
-    let observer = new MutationObserver(function(mutations) {
     
-        mutations.forEach(function(mutation) {
-            console.log(mutation.type);
-        });
-    });
-
-    var config = {
-    characterData: true,
-    subtree: true,
-    };
-
-    observer.observe(target, config) */
+    
 
 const logout = () =>{
     firebase.auth().signOut().then(() => {
@@ -130,6 +118,7 @@ let initFirechat =  async (user) =>{
   
     getAllRoomsMsgs()
     getAllUsers()
+    
   /*
     let target = document.querySelector('#rooms');
     let observer = new MutationObserver(function(mutations) {
@@ -204,7 +193,10 @@ if(RoomSmsg.length !=0){
 
 //check if room ID exist
 let enterRoomMsgs = (id) =>{
+  
     db.ref('chat/room-messages/'+id).on('value', (snapshot) => {
+        noUser=false;
+        try {
             const data = snapshot.val();
             let RoomMsg=Object.values(data);
             let exist = checkRoomSmsg(id)
@@ -214,13 +206,22 @@ let enterRoomMsgs = (id) =>{
                
                 RoomSmsg.map((key,index) =>{
                     if (key.id === id){
-                      
                         RoomSmsg[index]= {"id":id,RoomMsg}
                     }
+                    
                 })
             }
+            
+            let target = document.querySelector('#messages');   
+            target.scrollTop = target.scrollHeight;      
+        } catch (error) {
+        noUser=true
+        window.history.replaceState({}, '','/t/noUser');
+        UrlId="noUser"
+        }      
            
-    });
+    })
+
     
 
 }
@@ -229,10 +230,12 @@ if(RoomSmsg.length !=0){
 
     let exist = checkRoomSmsg(id)
     if (exist==false){
-        enterRoomMsgs(id)
-    } 
+        enterRoomMsgs(id)  
+    }
+
 }else{
     enterRoomMsgs(id)
+    
 }
 
 
@@ -254,6 +257,11 @@ let sorted = onlineUsers.sort(function(x, y){
 }
 })
 console.log(sorted);
+if(UrlId =="noUser"){
+    window.history.replaceState({}, '','/t/noUser'); 
+    
+}else{
+
 
 if(UrlId==""){
   
@@ -261,11 +269,13 @@ if(UrlId==""){
         if (onlineUsers[0].status.uid == $user.uid) {
             window.history.replaceState({}, '','/t/'+onlineUsers[1].status.uid); 
             UrlId=onlineUsers[1].status.uid
+
         }else{
             window.history.replaceState({}, '','/t/'+onlineUsers[0].status.uid);  
             UrlId=onlineUsers[0].status.uid
         }
         kgetRoomMsgs(UrlId)
+        userClickedUid=UrlId
     }     
 }else{
     let exist = false
@@ -285,6 +295,7 @@ if(UrlId==""){
                 UrlId=onlineUsers[0].status.uid
             }
             kgetRoomMsgs(UrlId)
+            userClickedUid=UrlId
         }
 
     }else{
@@ -299,11 +310,12 @@ if(UrlId==""){
                 }
             }
             kgetRoomMsgs(UrlId)
+            userClickedUid=UrlId
         }
     }
 }
 
-
+}
 });
 
 
@@ -323,6 +335,11 @@ const beOnline = () =>{
         "name":$user.displayName,
         "status":true,
     })
+    let time = Math.round(new Date().getTime() / 1000)
+    db.ref('chat/online-state/'+$user.uid+'/time').set({
+        "Timestamp":time
+    })
+    
 }
 //Get all rooms msgs
 const getAllRoomsMsgs = async () =>{
@@ -333,6 +350,7 @@ const getAllRoomsMsgs = async () =>{
 
         Object.keys(AllRooms).map(key=>{
             enterMessages(key)
+            userClickedUid=UrlId
         })
         
     });
@@ -479,7 +497,13 @@ const formatTimestampToDate = (t) => {
     .nameMsg .lastMsg{
         font-size: 13px;
         color:#65676b;
-    }
+        width: 200px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow-y: hidden;
+        overflow-x: hidden;
+}
+    
     .lastMsg.bold{
         font-weight: 700 !important;
         color:black;
@@ -490,7 +514,8 @@ const formatTimestampToDate = (t) => {
         display: flex;
         flex-direction: column;
         margin-bottom: 75px;
-        overflow-y: scroll;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     .singleMsg .msgBlock{
         display: flex;
@@ -736,6 +761,9 @@ margin-right: 12px;
     
     
 }
+.messagesContainer .arrow{
+        display: none;
+    }
 @media only screen and (max-width:1120px){
 .rooms{
     width: 97px;
@@ -752,24 +780,55 @@ margin-right: 12px;
 }
 }
     @media only screen and (max-width:800px){
-    .container{
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        height: 100%;
-    }
     .rooms{
         width: 100%;
-        height: 20%;
-        display: flex;
-        flex-direction: column;
-    }
-    .messages{
-        width: 100%;
         height: 100%;
-        display: flex;
         flex-direction: column;
-    } 
+        display: flex;
+        opacity: 1;
+        transition: opacity 0.3s;
+    }
+    .messagesContainer{
+        width: 0 !important;;
+        height: 100%;
+        opacity: 0 !important;
+        transition: opacity 0.3s; 
+    }
+    .messagesContainer.mobile{
+        display: flex !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        
+        
+    }
+    .rooms.mobile .buttonsContainer{
+        display: none;
+    }
+    .rooms.mobile{
+        opacity: 0;
+        width: 0px !important;
+        
+    }
+   
+    .messagesContainer.mobile .arrow{
+        display: block;
+        padding: 8px 12px;
+        width: 23px;
+        transform: rotate(180deg);
+        filter: invert(41%) sepia(80%) saturate(2347%) hue-rotate(182deg) brightness(102%) contrast(107%);
+        cursor: pointer;
+    }
+    
+    
+    .roomsNav .topPrt{
+        display: flex !important;
+    }
+    .singleUser{
+        justify-content: unset;
+    }
+    .singleUser .nameMsg{
+        display: flex !important
+    }
     }
 </style>
 
@@ -786,7 +845,7 @@ margin-right: 12px;
 
     </div>
 
-    <div class="rooms" id="rooms">
+    <div class="rooms" class:mobile id="rooms">
         <div class="roomsNav">
             <div class="topPrt">
                 <div class="imgText">
@@ -827,6 +886,9 @@ margin-right: 12px;
                 let x = onlineUser.status.uid ;
                 kgetRoomMsgs(x)
                 userClickedUid = x;
+                if(document.body.offsetWidth <=800){
+                    mobile = !mobile
+                }
                 
                 window.history.replaceState({}, '','/t/'+x);
                 UrlId=x
@@ -857,8 +919,9 @@ margin-right: 12px;
         {/each}
         {/if}
     </div>
+   
 
-    <div class="messagesContainer">
+    <div class="messagesContainer"  class:mobile>
         <div class="messagesNav">
             {#if Object.keys(onlineUsers).length!=0}
             {#each onlineUsers as onlineUser}
@@ -866,6 +929,11 @@ margin-right: 12px;
            
             
             <div class="userInfo">
+                <img 
+                on:click="{()=>{if(document.body.offsetWidth <=800){
+                    mobile = !mobile
+                }}}" 
+                src="../imgs/arrow.svg" alt="" class="arrow">
                 <div class="img">
                     <img src="../imgs/user.jpg" alt="user">
                     <div class="notif  {onlineUser.status.status ? "online" :""}" ></div>
@@ -916,7 +984,7 @@ margin-right: 12px;
         </div>
      
 
-        <div class="messagesSendingArea" class:bigger>
+        <div class="messagesSendingArea" class:bigger >
             <div class="options">
                 <svg viewBox="0 0 36 36" height="28px" width="28px" class="a8c37x1j muag1w35 dlv3wnog enqfppq2 rl04r1d5 ms05siws hr662l2t b7h9ocf4 crt8y2ji tftn3vyl"><path fill-rule="evenodd" clip-rule="evenodd" d="M18 29c6.075 0 11-4.925 11-11S24.075 7 18 7 7 11.925 7 18s4.925 11 11 11zm-1-16a1 1 0 112 0v3.75c0 .138.112.25.25.25H23a1 1 0 110 2h-3.75a.25.25 0 00-.25.25V23a1 1 0 11-2 0v-3.75a.25.25 0 00-.25-.25H13a1 1 0 110-2h3.75a.25.25 0 00.25-.25V13z" fill="#0099FF"></path></svg>
                 <svg  class:writing viewBox="0 0 36 36" height="28px" width="28px" class="remove1 remove a8c37x1j muag1w35 dlv3wnog enqfppq2 rl04r1d5 ms05siws hr662l2t b7h9ocf4 crt8y2ji"><path d="M13.5 16.5a2 2 0 100-4 2 2 0 000 4z" fill="#0099FF"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M7 12v12a4 4 0 004 4h14a4 4 0 004-4V12a4 4 0 00-4-4H11a4 4 0 00-4 4zm18-1.5H11A1.5 1.5 0 009.5 12v9.546a.25.25 0 00.375.217L15 18.803a6 6 0 016 0l5.125 2.96a.25.25 0 00.375-.217V12a1.5 1.5 0 00-1.5-1.5z" fill="#0099FF"></path></svg>
@@ -937,7 +1005,8 @@ margin-right: 12px;
                     if(key == 13){
                         sendMessage(roomId,message)
                         document.getElementById("txtArea").value=""
-                        
+                        let target = document.querySelector('#messages');   
+                        target.scrollTop = target.scrollHeight; 
                         textAreaChanging()
                     }
                 }}"
@@ -960,6 +1029,7 @@ margin-right: 12px;
             
         </div>
     </div>
+    
     
 </div>
 

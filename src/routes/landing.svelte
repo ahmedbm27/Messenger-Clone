@@ -359,7 +359,7 @@ const doSubmit = async () => {
     #mobileMenu.opened{
         transition: all 0.3s;
         -webkit-transition: all 0.3s;
-       
+        display: flex;
         opacity: 1;
        
     }
