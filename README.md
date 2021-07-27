@@ -1,5 +1,5 @@
 # Messenger chat app Clone
-This is a Facebook messenger clone with almos all chat functionalities.
+This is a Facebook messenger clone with almost all chat functionalities.
 
 link : [Demo](https://svelte.messenger.ahmedbm.com/)
 
